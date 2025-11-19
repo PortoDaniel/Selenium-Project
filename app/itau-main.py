@@ -22,17 +22,43 @@ diretorio_consolidado = creds.diretorio_consolidado_itau
 # 🧹 Apaga arquivos criados hoje no diretório de arquivos base
 for arquivo in os.listdir(diretorio_file_base):
     caminho_arquivo = os.path.join(diretorio_file_base, arquivo)
+    nome_upper = arquivo.upper()
+
+    # IGNORAR arquivos da Caixa, Histórico e Consolidado
+    if (
+        "CAIXA" in nome_upper or
+        "HISTORICO" in nome_upper or
+        "CONSOLIDADO" in nome_upper
+    ):
+        continue
+
     if os.path.isfile(caminho_arquivo):
         data_criacao = date.fromtimestamp(os.path.getctime(caminho_arquivo))
+
+        # excluir somente se criado HOJE
         if data_criacao == data_hoje:
             os.remove(caminho_arquivo)
             print(f"🗑️ Arquivo removido: {arquivo}")
 
+
 # 🧹 Apaga apenas arquivos .xlsx criados hoje no diretório base
 for arquivo in os.listdir(diretorio_base):
     caminho_arquivo = os.path.join(diretorio_base, arquivo)
+    nome_upper = arquivo.upper()
+
+    # IGNORAR arquivos da Caixa, Histórico e Consolidado
+    if (
+        "CAIXA" in nome_upper or
+        "HISTORICO" in nome_upper or
+        "CONSOLIDADO" in nome_upper
+    ):
+        continue
+
+    # só arquivos .xlsx
     if os.path.isfile(caminho_arquivo) and arquivo.lower().endswith(".xlsx"):
         data_criacao = date.fromtimestamp(os.path.getctime(caminho_arquivo))
+
+        # excluir somente se criado HOJE
         if data_criacao == data_hoje:
             os.remove(caminho_arquivo)
             print(f"🗑️ Arquivo .xlsx removido: {arquivo}")

@@ -20,26 +20,39 @@ data_hoje = date.today()
 # Limpeza de pastas — apenas arquivos criados hoje
 for pasta in [diretorio_file_base, diretorio_consolidado]:
     os.makedirs(pasta, exist_ok=True)
+
     for arquivo in os.listdir(pasta):
         caminho = os.path.join(pasta, arquivo)
+        nome_upper = arquivo.upper()
 
-        # Ignora qualquer caminho que contenha 'ITAU' (maiúsculo ou minúsculo)
-        if "ITAU" in caminho.upper():
+        # IGNORAR arquivos contendo ITAU / HISTORICO / CONSOLIDADO
+        if (
+            "ITAU" in nome_upper or
+            "HISTORICO" in nome_upper or
+            "CONSOLIDADO" in nome_upper
+        ):
             continue
 
         try:
             if os.path.isfile(caminho):
                 data_criacao = date.fromtimestamp(os.path.getctime(caminho))
+
+                # Remove apenas arquivos criados HOJE
                 if data_criacao == data_hoje:
                     os.remove(caminho)
                     print(f"🗑️ Arquivo removido: {arquivo}")
+
             elif os.path.isdir(caminho):
                 data_criacao = date.fromtimestamp(os.path.getctime(caminho))
+
+                # Remove apenas pastas criadas HOJE
                 if data_criacao == data_hoje:
                     shutil.rmtree(caminho)
                     print(f"🗑️ Pasta removida: {arquivo}")
+
         except Exception as e:
             print(f"⚠️ Erro ao remover {arquivo}: {e}")
+
 
 # Configuração do Firefox
 options = webdriver.FirefoxOptions()
