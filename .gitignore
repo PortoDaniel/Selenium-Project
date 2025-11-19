@@ -1,0 +1,4 @@
+*.venv
+*__py
+creds.py
+__pycache__
