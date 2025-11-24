@@ -122,6 +122,33 @@ def esperar_extrato_ou_bloqueio(driver, timeout=10):
     # Timeout: tenta uma última checagem
     return "bloqueio" if driver.find_elements(By.XPATH, xpath_bloqueio) else "ok"
 
+def esperar_extrato_ou_indisponivel(driver, timeout=5):
+    """
+    Retorna:
+        'indisponivel' → quando aparece 'Dados indisponíveis no momento.'
+        'ok' → quando o extrato está carregado (mostra o botão 'Extrato CAIXA')
+    """
+    xpath_indisponivel = ("//p[contains(@class,'mensagem__descricao') "
+                          "and contains(., 'Dados indisponíveis no momento')]")
+
+    xpath_extrato_ok = "//a[contains(normalize-space(.), 'Extrato CAIXA')]"
+
+    end = time.time() + timeout
+    while time.time() < end:
+        # 1) Dados indisponíveis?
+        if driver.find_elements(By.XPATH, xpath_indisponivel):
+            return "indisponivel"
+
+        # 2) Extrato carregado normalmente?
+        if driver.find_elements(By.XPATH, xpath_extrato_ok):
+            return "ok"
+
+        time.sleep(0.25)
+
+    # Timeout → última checagem
+    return "indisponivel" if driver.find_elements(By.XPATH, xpath_indisponivel) else "ok"
+
+
 # Loop das contas
 while True:
     # Abre o seletor de contas
@@ -196,6 +223,12 @@ while True:
         estado = esperar_extrato_ou_bloqueio(driver, timeout=3)
         if estado == "bloqueio":
             print("⛔ Conta sem permissão de acesso ao saldo — pulando para a próxima.")
+            continue
+
+        estado_ind = esperar_extrato_ou_indisponivel(driver, timeout=4)
+
+        if estado_ind == "indisponivel":
+            print("⛔ Dados indisponíveis — pulando esta conta.")
             continue
 
         # Espera o botão "Saldo e Extratos"
