@@ -79,6 +79,14 @@ wait = WebDriverWait(driver, 20)
 # Login
 wait.until(EC.presence_of_element_located((By.ID, "password"))).send_keys(pswd)
 driver.find_element(By.ID, "kc-login").click()
+print("Login realizado")
+
+time.sleep(6)
+driver.actions.move_by_offset(1, 2).click().perform()
+driver.actions.move_by_offset(-1, -2).perform() 
+print("Clicado 2")
+driver.actions.move_by_offset(1, 2).click().perform()
+print("Clicado")
 
 time.sleep(2)
 # Fechar aviso inicial, se aparecer
