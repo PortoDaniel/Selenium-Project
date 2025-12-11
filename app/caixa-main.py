@@ -81,11 +81,12 @@ wait.until(EC.presence_of_element_located((By.ID, "password"))).send_keys(pswd)
 driver.find_element(By.ID, "kc-login").click()
 print("Login realizado")
 
+actions = ActionChains(driver)
 time.sleep(6)
-driver.actions.move_by_offset(1, 2).click().perform()
-driver.actions.move_by_offset(-1, -2).perform() 
+actions.move_by_offset(1, 1).click().perform()
+actions.move_by_offset(-1, -1).perform()
 print("Clicado 2")
-driver.actions.move_by_offset(1, 2).click().perform()
+actions.move_by_offset(1, 2).click().perform()
 print("Clicado")
 
 time.sleep(2)
@@ -262,7 +263,7 @@ while True:
         print(f"💾 Clique no botão XLS realizado para {nome_conta}")
 
         # Pausa breve antes de reabrir a lista
-        time.sleep(2)
+        time.sleep(1.5)
 
         # Busca o arquivo XLS mais recente baixado
         arquivos = [
