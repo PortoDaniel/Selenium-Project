@@ -12,6 +12,8 @@ import os, time, shutil
 from datetime import datetime, date
 import creds
 
+import pandas as pd
+
 data_hoje = date.today()
 
 #APAGAR ARQUIVOS DO DIRETORIO
@@ -216,88 +218,85 @@ def clicar_com_retry(driver, by, locator, descricao, timeout_total=220):
             time.sleep(3)
 
 
-def clicar_pdf_com_retorno(driver, max_tentativas_pdf=20):
+def esperar_download_concluir(diretorio, timeout=40):
     """
-    Tenta clicar no botão 'Salvar em Excel' até max_tentativas_pdf vezes.
-    Após clicar, espera o modal aparecer e clica no botão 'Salvar'.
-    Depois aguarda a mensagem 'Arquivo salvo com sucesso'.
-    Se falhar todas, volta no botão 'Extrato' e tenta novamente.
+    Aguarda um novo arquivo aparecer no diretório e
+    garante que não é .crdownload / .tmp
     """
+    inicio = time.time()
+    arquivos_iniciais = set(os.listdir(diretorio))
 
-    ultimo_erro = None
-    xpath_excel = "//span[normalize-space()='Salvar em Excel']/ancestor::button"
-    xpath_extrato = "//h2[contains(.,'Salvar extrato')]/ancestor::legend//button"
-    xpath_salvar_modal = "//span[normalize-space()='Salvar']/ancestor::button"
-    xpath_mensagem_sucesso = "//div[contains(@class,'voxel-alert__message') and contains(.,'Arquivo salvo com sucesso')]"
+    while time.time() - inicio < timeout:
+        arquivos_atuais = set(os.listdir(diretorio))
+        novos = arquivos_atuais - arquivos_iniciais
 
-    # ==========================
-    # 1️⃣ Tentativas no botão Excel
-    # ==========================
-    for tentativa in range(max_tentativas_pdf):
-        try:
-            ActionChains(driver).move_by_offset(2, 0).click().perform()
-            botao_excel = WebDriverWait(driver, 5).until(
-                EC.element_to_be_clickable((By.XPATH, xpath_excel))
-            )
-            botao_excel.click()
-            print(f"✅ Botão 'Salvar em Excel' clicado na tentativa {tentativa+1}")
+        arquivos_validos = [
+            f for f in novos
+            if not f.endswith(".crdownload") and not f.endswith(".tmp")
+        ]
 
-            # Espera o modal abrir e clica no botão "Salvar"
-            botao_salvar = WebDriverWait(driver, 15).until(
-                EC.element_to_be_clickable((By.XPATH, xpath_salvar_modal))
-            )
-            botao_salvar.click()
-            print("✅ Botão 'Salvar' do modal clicado com sucesso")
-
-            # Espera a mensagem de sucesso aparecer
-            WebDriverWait(driver, 30).until(
-                EC.visibility_of_element_located((By.XPATH, xpath_mensagem_sucesso))
-            )
-            print("🎉 Mensagem 'Arquivo salvo com sucesso' detectada!")
+        if arquivos_validos:
             return True
 
+        time.sleep(1)
+
+    return False
+
+
+
+def clicar_excel_com_retorno(
+    driver,
+    diretorio_download,
+    max_tentativas=10
+):
+    """
+    Clica em 'Salvar em Excel', aguarda o download concluir
+    e retorna True para seguir o fluxo.
+    """
+
+    xpath_li_excel = "//li[@id='salvarXls']"
+    xpath_excel = "//li[@id='salvarXls']//a[contains(@href,'xls')]"
+
+    ultimo_erro = None
+
+    for tentativa in range(max_tentativas):
+        try:
+            print(f"🔁 Tentativa {tentativa+1}/{max_tentativas} — Excel")
+
+            # 1️⃣ Garante que o menu de exportação existe
+            WebDriverWait(driver, 25).until(
+                EC.presence_of_element_located((By.XPATH, xpath_li_excel))
+            )
+
+            # 2️⃣ Localiza o botão Excel
+            botao_excel = WebDriverWait(driver, 25).until(
+                EC.presence_of_element_located((By.XPATH, xpath_excel))
+            )
+
+            # 3️⃣ Scroll + clique via JS (obrigatório no Itaú)
+            driver.execute_script(
+                "arguments[0].scrollIntoView({block:'center'});", botao_excel
+            )
+            time.sleep(0.5)
+            driver.execute_script("arguments[0].click();", botao_excel)
+
+            print("✅ Clique em 'Salvar em Excel' executado")
+
+            # 4️⃣ Aguarda o download real
+            if esperar_download_concluir(diretorio_download, timeout=40):
+                print("📥 Download concluído com sucesso")
+                return True
+
+            raise Exception("Download não detectado")
+
         except Exception as e:
-            time.sleep(2)
             ultimo_erro = e
-            print(f"⏳ Tentativa {tentativa+1} falhou para botão Excel.")
-            time.sleep(1)
+            print(f"⏳ Falha na tentativa {tentativa+1}: {e}")
+            time.sleep(2)
 
-    # ==========================
-    # 2️⃣ Se todas falharem → tenta o fallback
-    # ==========================
-    try:
-        print("🔄 Reiniciando fluxo: clicando novamente no botão 'Extrato' antes do Excel...")
-        botao_extrato = WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable((By.XPATH, xpath_extrato))
-        )
-        botao_extrato.click()
-        time.sleep(5)
+    print("❌ Todas as tentativas de download falharam")
+    raise ultimo_erro
 
-        botao_excel = WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable((By.XPATH, xpath_excel))
-        )
-        botao_excel.click()
-        print("✅ Fluxo Extrato + Excel clicado, aguardando modal...")
-
-        # Espera o modal e clica em Salvar
-        botao_salvar = WebDriverWait(driver, 15).until(
-            EC.element_to_be_clickable((By.XPATH, xpath_salvar_modal))
-        )
-        botao_salvar.click()
-        print("✅ Botão 'Salvar' do modal clicado no fallback")
-
-        # Espera a mensagem de sucesso
-        WebDriverWait(driver, 30).until(
-            EC.visibility_of_element_located((By.XPATH, xpath_mensagem_sucesso))
-        )
-        print("🎉 Mensagem 'Arquivo salvo com sucesso' detectada após fallback!")
-        return True
-
-    except Exception as e:
-        print("❌ Fluxo Extrato + Excel falhou mesmo após fallback")
-        print(f"Erro final: {e}")
-        raise e
-    
 
 def clicar_perfil_usuario(driver, tentativas=10, tempo_espera=5):
     """
@@ -329,6 +328,15 @@ def clicar_perfil_usuario(driver, tentativas=10, tempo_espera=5):
 
     # Se chegar aqui, todas as tentativas falharam
     raise Exception("❌ Não foi possível clicar no elemento 'perfil-usuario-ni' após várias tentativas.")
+
+def converter_xls_para_xlsx(caminho_xls):
+    caminho_xlsx = caminho_xls.replace(".xls", ".xlsx")
+
+    df = pd.read_excel(caminho_xls, engine="xlrd")
+    df.to_excel(caminho_xlsx, index=False, engine="openpyxl")
+
+    os.remove(caminho_xls)
+    return caminho_xlsx
 
 def sanitize_filename(nome: str) -> str:
     # remove ou troca caracteres inválidos para Windows
@@ -370,19 +378,28 @@ while exists_counts:
         #BOTÃO DE EXTRATO E PDF
         clicar_com_retry(driver, By.ID, "btnExtrato", "Botão Extrato")
         time.sleep(1.5)
-        clicar_pdf_com_retorno(driver)
+        clicar_excel_com_retorno(
+            driver,
+            diretorio_file_base
+        )
 
         #RENOMEAR O ARQUIVO
         time.sleep(1.5)
-
+        # Arquivo baixado
         arquivos = os.listdir(diretorio_file_base)
         arquivos = [os.path.join(diretorio_file_base, f) for f in arquivos]
         ultimo = max(arquivos, key=os.path.getctime)
+
+        # Renomeia mantendo XLS
         nome_limpo = sanitize_filename(array_accont[i])
-        n_nome = f"{nome_limpo}({datetime.now().strftime('%d-%m-%Y')}).xlsx"
-        novo_nome = os.path.join(diretorio_file_base, n_nome)
-        shutil.move(ultimo, novo_nome)
-        print(f"Arquivo foi  criado {n_nome}")
+        nome_xls = f"{nome_limpo}({datetime.now().strftime('%d-%m-%Y')}).xls"
+        novo_xls = os.path.join(diretorio_file_base, nome_xls)
+        shutil.move(ultimo, novo_xls)
+
+        # Converte para XLSX real
+        novo_xlsx = converter_xls_para_xlsx(novo_xls)
+
+        print(f"📄 Arquivo convertido com sucesso: {os.path.basename(novo_xlsx)}")
 
         if i == last_count:
             exists_counts = False
