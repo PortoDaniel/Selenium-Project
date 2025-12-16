@@ -384,7 +384,7 @@ while exists_counts:
         )
 
         #RENOMEAR O ARQUIVO
-        time.sleep(1.5)
+        time.sleep(2)
         # Arquivo baixado
         arquivos = os.listdir(diretorio_file_base)
         arquivos = [os.path.join(diretorio_file_base, f) for f in arquivos]
