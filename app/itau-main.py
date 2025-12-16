@@ -99,21 +99,31 @@ driver.get("https://www.itau.com.br/")
 
 # --COOKIES
 try:
+    # Espera até que o banner de cookies esteja presente
+    WebDriverWait(driver, 20).until(EC.presence_of_element_located((By.TAG_NAME, "itau-cookie-consent-banner")))
+
+    # Acessa o banner de cookies
     banners = driver.find_elements(By.TAG_NAME, "itau-cookie-consent-banner")
     if banners:
         banner = banners[0]
         shadow_root = driver.execute_script("return arguments[0].shadowRoot", banner)
 
         try:
-            cookie_button = shadow_root.find_element(By.ID, "itau-cookie-consent-banner-accept-cookies-btn")
+            # Espera até que o botão de aceitação de cookies esteja presente e clicável
+            cookie_button = WebDriverWait(shadow_root, 20).until(
+                EC.element_to_be_clickable((By.ID, "itau-cookie-consent-banner-accept-cookies-btn"))
+            )
             cookie_button.click()
             print("Botão de cookies clicado!")
+        except TimeoutException:
+            print("O botão de cookies não estava disponível a tempo.")
         except NoSuchElementException:
-            print("Banner encontrado, mas botão não disponível")
-
+            print("Banner encontrado, mas botão não disponível.")
     else:
-        print("Nenhum banner de cookies encontrado")
+        print("Nenhum banner de cookies encontrado.")
 
+except TimeoutException:
+    print("O banner de cookies não foi encontrado a tempo.")
 except Exception as e:
     print(f"Erro inesperado ao tentar lidar com cookies: {e}")
 
