@@ -260,12 +260,12 @@ def clicar_excel_com_retorno(
     max_tentativas=10
 ):
     """
-    Clica em 'Salvar em Excel', aguarda o download concluir
-    e retorna True para seguir o fluxo.
+    Clica em 'Salvar em Excel', clica em 'Salvar' no modal
+    aguarda o download concluir e retorna True.
     """
 
-    xpath_li_excel = "//li[@id='salvarXls']"
-    xpath_excel = "//li[@id='salvarXls']//a[contains(@href,'xls')]"
+    xpath_excel = "//button[contains(., 'Salvar em Excel')]"
+    xpath_salvar_modal = "//div[contains(@class,'cdk-overlay-pane')]//button[.//span[normalize-space()='Salvar']]"
 
     ultimo_erro = None
 
@@ -273,26 +273,44 @@ def clicar_excel_com_retorno(
         try:
             print(f"🔁 Tentativa {tentativa+1}/{max_tentativas} — Excel")
 
-            # 1️⃣ Garante que o menu de exportação existe
-            WebDriverWait(driver, 25).until(
-                EC.presence_of_element_located((By.XPATH, xpath_li_excel))
+            # 🔹 0️⃣ Clique neutro (simula humano / limpa foco)
+            ActionChains(driver)\
+                .move_by_offset(10, 10)\
+                .click()\
+                .perform()
+            time.sleep(0.8)
+
+            # 🔹 1️⃣ Aguarda botão "Salvar em Excel"
+            botao_excel = WebDriverWait(driver, 30).until(
+                EC.element_to_be_clickable((By.XPATH, xpath_excel))
             )
 
-            # 2️⃣ Localiza o botão Excel
-            botao_excel = WebDriverWait(driver, 25).until(
-                EC.presence_of_element_located((By.XPATH, xpath_excel))
-            )
-
-            # 3️⃣ Scroll + clique via JS (obrigatório no Itaú)
+            # 🔹 2️⃣ Scroll + clique no Excel
             driver.execute_script(
-                "arguments[0].scrollIntoView({block:'center'});", botao_excel
+                "arguments[0].scrollIntoView({block:'center'});",
+                botao_excel
             )
             time.sleep(0.5)
             driver.execute_script("arguments[0].click();", botao_excel)
 
             print("✅ Clique em 'Salvar em Excel' executado")
 
-            # 4️⃣ Aguarda o download real
+            # 🔹 3️⃣ Aguarda o modal abrir
+            botao_salvar = WebDriverWait(driver, 20).until(
+                EC.element_to_be_clickable((By.XPATH, xpath_salvar_modal))
+            )
+
+            # 🔹 4️⃣ Scroll + clique no botão "Salvar" do modal
+            driver.execute_script(
+                "arguments[0].scrollIntoView({block:'center'});",
+                botao_salvar
+            )
+            time.sleep(0.5)
+            driver.execute_script("arguments[0].click();", botao_salvar)
+
+            print("✅ Clique em 'Salvar' do modal executado")
+
+            # 🔹 5️⃣ Aguarda download REAL
             if esperar_download_concluir(diretorio_download, timeout=40):
                 print("📥 Download concluído com sucesso")
                 return True
@@ -306,7 +324,6 @@ def clicar_excel_com_retorno(
 
     print("❌ Todas as tentativas de download falharam")
     raise ultimo_erro
-
 
 def clicar_perfil_usuario(driver, tentativas=10, tempo_espera=5):
     """
@@ -400,16 +417,15 @@ while exists_counts:
         arquivos = [os.path.join(diretorio_file_base, f) for f in arquivos]
         ultimo = max(arquivos, key=os.path.getctime)
 
-        # Renomeia mantendo XLS
+        # Renomeia corretamente para XLSX
         nome_limpo = sanitize_filename(array_accont[i])
-        nome_xls = f"{nome_limpo}({datetime.now().strftime('%d-%m-%Y')}).xls"
-        novo_xls = os.path.join(diretorio_file_base, nome_xls)
-        shutil.move(ultimo, novo_xls)
+        nome_xlsx = f"{nome_limpo}({datetime.now().strftime('%d-%m-%Y')}).xlsx"
+        novo_xlsx = os.path.join(diretorio_file_base, nome_xlsx)
 
-        # Converte para XLSX real
-        novo_xlsx = converter_xls_para_xlsx(novo_xls)
+        shutil.move(ultimo, novo_xlsx)
 
-        print(f"📄 Arquivo convertido com sucesso: {os.path.basename(novo_xlsx)}")
+        print(f"📄 Arquivo XLSX salvo com sucesso: {nome_xlsx}")
+
 
         if i == last_count:
             exists_counts = False
