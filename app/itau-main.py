@@ -141,9 +141,11 @@ driver.find_element(By.ID, "idl-more-access-input-operator").send_keys(accont)
 # print("Senha Inserida Operador")
 driver.find_element(By.ID, "idl-more-access-submit-button").click()
 
+#Esperar Aparecer a tela
+WebDriverWait(driver, 120).until(EC.presence_of_element_located((By.ID, "acessar")))
+print("Tela carregada")
 
 #SENHA VIRTUAL
-
 WebDriverWait(driver, 20).until(EC.presence_of_element_located((By.ID, "campoTeclado")))
 time.sleep(1)
 botoes = driver.find_elements(By.ID, "campoTeclado")
